@@ -307,7 +307,7 @@ export default function CardDetailPage() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Bouton d'abonnement ou d'accès gratuit */}
+                  {/* Bouton d'accès gratuit ou sélection payante */}
                   {card.price === 0 ? (
                     // Bouton d'accès gratuit pour les modules gratuits
                     <button 
@@ -383,12 +383,20 @@ export default function CardDetailPage() {
                         className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
                           isCardSelected(card.id)
                             ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                            : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+                            : card.price === 0
+                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
+                            : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white cursor-not-allowed'
                         }`}
-                        onClick={() => handleSubscribe(card)}
+                        onClick={() => {
+                          if (card.price === 0) {
+                            handleSubscribe(card);
+                          } else {
+                            alert('Ce module nécessite un abonnement payant');
+                          }
+                        }}
                       >
                         <span className="text-xl">🔐</span>
-                        <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Choisir'}</span>
+                        <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Module Payant'}</span>
                       </button>
                       
                       {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" */}
@@ -437,55 +445,55 @@ export default function CardDetailPage() {
                         </button>
                       )}
 
-                      {/* Bouton Test JWT - toujours visible si session existe */}
-                      {session && (
-                        <button 
-                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                          onClick={async () => {
-                            try {
-                              console.log('🔍 Test JWT - Génération du token pour:', card.title);
-                              const response = await fetch('/api/generate-access-token', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                  'Authorization': `Bearer ${session?.access_token}`
-                                },
-                                body: JSON.stringify({
-                                  moduleId: card.id,
-                                  moduleName: card.title.toLowerCase().replace(/\s+/g, '')
-                                }),
-                              });
-                              if (!response.ok) {
-                                const errorData = await response.json();
-                                throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
-                              }
-                              const { accessToken, moduleName } = await response.json();
-                              console.log('✅ Token JWT généré avec succès');
-                              console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
-                              const moduleUrls: { [key: string]: string } = {
-                                'stablediffusion': 'http://localhost:7860',
-                                'iaphoto': 'http://localhost:7861', 
-                                'iametube': 'http://localhost:7862',
-                                'chatgpt': 'http://localhost:7863',
-                                'librespeed': 'https://librespeed.regispailler.fr',
-                                'psitransfer': 'https://psitransfer.regispailler.fr',
-                                'pdf+': 'https://pdfplus.regispailler.fr',
-                                'aiassistant': 'http://localhost:7864'
-                              };
-                              const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
-                              const accessUrl = `${baseUrl}?token=${accessToken}`;
-                              console.log('🔗 URL d\'accès:', accessUrl);
-                              window.open(accessUrl, '_blank');
-                            } catch (error) {
-                              console.error('❌ Erreur lors de l\'accès:', error);
-                              alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-                            }
-                          }}
-                        >
-                          <span className="text-xl">🔑</span>
-                          <span>Test JWT - Accéder à {card.title}</span>
-                        </button>
-                      )}
+                                             {/* Bouton Test JWT - seulement pour les modules payants */}
+                       {session && card.price > 0 && (
+                         <button 
+                           className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                           onClick={async () => {
+                             try {
+                               console.log('🔍 Test JWT - Génération du token pour:', card.title);
+                               const response = await fetch('/api/generate-access-token', {
+                                 method: 'POST',
+                                 headers: {
+                                   'Content-Type': 'application/json',
+                                   'Authorization': `Bearer ${session?.access_token}`
+                                 },
+                                 body: JSON.stringify({
+                                   moduleId: card.id,
+                                   moduleName: card.title.toLowerCase().replace(/\s+/g, '')
+                                 }),
+                               });
+                               if (!response.ok) {
+                                 const errorData = await response.json();
+                                 throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                               }
+                               const { accessToken, moduleName } = await response.json();
+                               console.log('✅ Token JWT généré avec succès');
+                               console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
+                               const moduleUrls: { [key: string]: string } = {
+                                 'stablediffusion': 'http://localhost:7860',
+                                 'iaphoto': 'http://localhost:7861', 
+                                 'iametube': 'http://localhost:7862',
+                                 'chatgpt': 'http://localhost:7863',
+                                 'librespeed': 'https://librespeed.regispailler.fr',
+                                 'psitransfer': 'https://psitransfer.regispailler.fr',
+                                 'pdf+': 'https://pdfplus.regispailler.fr',
+                                 'aiassistant': 'http://localhost:7864'
+                               };
+                               const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
+                               const accessUrl = `${baseUrl}?token=${accessToken}`;
+                               console.log('🔗 URL d\'accès:', accessUrl);
+                               window.open(accessUrl, '_blank');
+                             } catch (error) {
+                               console.error('❌ Erreur lors de l\'accès:', error);
+                               alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                             }
+                           }}
+                         >
+                           <span className="text-xl">🔑</span>
+                           <span>Test JWT - Accéder à {card.title}</span>
+                         </button>
+                       )}
                     </div>
                   )}
 
