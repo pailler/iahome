@@ -1,0 +1,5 @@
+[33m5302cff[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;33mtag: [m[1;33m4-aout-2025[m[33m)[m 4 aout 2025 - Bouton orange direct vers Stripe + suppression page selections + correction parsing prix
+[33m1656f05[m feat: Optimisation de l'interface des modules gratuits vs payants
+[33m7fb54b9[m cleanup: Suppression des guides obsolètes
+[33m99777a3[m cleanup: Suppression des scripts SQL obsolètes
+[33m3d3c0be[m feat: Amélioration complète du système de gestion des modules
