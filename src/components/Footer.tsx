@@ -43,11 +43,7 @@ export default function Footer() {
                   Modules IA
                 </Link>
               </li>
-              <li>
-                <Link href="/selections" className="text-gray-300 hover:text-white transition-colors">
-                  Sélections
-                </Link>
-              </li>
+
               <li>
                 <Link href="/encours" className="text-gray-300 hover:text-white transition-colors">
                   Mes Applications

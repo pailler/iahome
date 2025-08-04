@@ -32,6 +32,18 @@ export default function Home() {
     title: ''
   });
 
+  // Fonction utilitaire pour déterminer si un module est gratuit
+  const isModuleFree = (module: any) => {
+    const priceStr = module.price?.toString().toLowerCase() || '';
+    return priceStr === '0' || priceStr === '0.00' || priceStr.includes('gratuit') || priceStr.includes('free');
+  };
+
+  const isModulePaid = (module: any) => {
+    const priceStr = module.price?.toString().toLowerCase() || '';
+    const isFree = isModuleFree(module);
+    return !isFree && (priceStr.includes('€') || priceStr.includes('euros') || priceStr.includes('euro') || /\d+\.\d+/.test(priceStr) || /\d+,\d+/.test(priceStr));
+  };
+
   // Vérification de la configuration Supabase
   useEffect(() => {
     console.log('Configuration Supabase:');
@@ -115,7 +127,7 @@ export default function Home() {
         // Test de connexion de base
         const { data: testData, error: testError } = await supabase
           .from('modules')
-          .select('count')
+          .select('id')
           .limit(1);
         
         console.log('Test de connexion:', { testData, testError });
@@ -136,6 +148,7 @@ export default function Home() {
           console.error('Hint:', error.hint);
         } else {
           console.log('Modules chargés avec succès:', data);
+          console.log('Sous-titres des modules:', data?.map(m => ({ title: m.title, subtitle: m.subtitle })));
           
           // Ajouter des rôles et données aléatoires aux modules pour l'affichage
           const modulesWithRoles = (data || []).map(module => ({
@@ -263,7 +276,8 @@ export default function Home() {
     // Vérifier l'abonnement pour tous les modules
     if (!hasSubscription) {
       console.log(`❌ Aucun abonnement actif pour ${moduleName}`);
-      router.push(`/selections?module=${moduleName.toLowerCase()}`);
+      // Rediriger vers la page détaillée du module pour l'achat
+      router.push(`/card/${moduleName.toLowerCase()}`);
       return null;
     }
     
@@ -313,8 +327,8 @@ export default function Home() {
 
       // Filtre par prix
       const matchesPrice = priceFilter === 'all' || 
-        (priceFilter === 'free' && module.price === 0) ||
-        (priceFilter === 'paid' && module.price > 0);
+        (priceFilter === 'free' && isModuleFree(module)) ||
+        (priceFilter === 'paid' && isModulePaid(module));
 
       // Filtre par niveau d'expérience
       const matchesExperience = experienceFilter === 'all' || 
@@ -333,9 +347,9 @@ export default function Home() {
         case 'least_used':
           return (a.usage_count || 0) - (b.usage_count || 0);
         case 'price_high':
-          return (b.price || 0) - (a.price || 0);
+          return (parseFloat(b.price) || 0) - (parseFloat(a.price) || 0);
         case 'price_low':
-          return (a.price || 0) - (b.price || 0);
+          return (parseFloat(a.price) || 0) - (parseFloat(b.price) || 0);
         case 'name_az':
           return a.title.localeCompare(b.title);
         case 'name_za':
@@ -998,7 +1012,6 @@ export default function Home() {
                             <p className="text-sm text-gray-500 mb-2 italic">{module.subtitle}</p>
                           )}
                         </Link>
-                        <p className="text-sm text-gray-600 mb-4">{module.description}</p>
                       </div>
 
 
@@ -1079,14 +1092,11 @@ export default function Home() {
 
                         </div>
 
-                                                 {/* Prix et bouton */}
-                         <div className="flex items-center justify-between">
-                           <div className="text-2xl font-bold text-blue-900">
-                             €{module.price}
-                           </div>
+                                                 {/* Boutons d'accès */}
+                         <div className="flex items-center justify-end">
                            <div className="flex gap-2">
-                             {/* Bouton d'accès direct pour les modules avec abonnement actif ou modules gratuits (sauf Metube) */}
-{session && (userSubscriptions[module.title] || module.price === 0) && module.title !== 'Metube' && (
+                             {/* Bouton d'accès direct pour les modules avec abonnement actif (exclure les modules gratuits spécifiques) */}
+{session && (userSubscriptions[module.title] || (isModuleFree(module) && !['PDF+', 'Librespeed', 'PSitransfer'].includes(module.title))) && module.title !== 'Metube' && (
                                <button 
                                  className="px-4 py-2 rounded-lg font-semibold text-sm bg-green-600 hover:bg-green-700 text-white transition-colors"
                                  onClick={async () => {
@@ -1136,7 +1146,7 @@ export default function Home() {
                                        });
                                      } else {
                                        // Pour les modules gratuits sans URL spécifique, afficher un message
-                                       if (module.price === 0) {
+                                       if (isModuleFree(module)) {
                                          alert(`Module gratuit "${module.title}" - Accès disponible pour les utilisateurs connectés`);
                                        }
                                      }
@@ -1144,7 +1154,7 @@ export default function Home() {
                                  }}
                                  title={`Accéder à ${module.title}`}
                                >
-                                 {module.price === 0 ? '🆓 Accéder gratuitement' : '📺 Accéder'}
+                                 {isModuleFree(module) ? '🆓 Accéder gratuitement' : '📺 Accéder'}
                                </button>
                              )}
                           </div>

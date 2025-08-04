@@ -44,8 +44,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fonction pour extraire le prix numérique d'une chaîne
+    const extractPrice = (priceString: string): number => {
+      if (typeof priceString === 'number') return priceString;
+      if (!priceString) return 0;
+      
+      // Chercher un nombre avec décimales (ex: 9.99, 19.99)
+      const priceMatch = priceString.match(/(\d+\.?\d*)/);
+      if (priceMatch) {
+        return parseFloat(priceMatch[1]);
+      }
+      
+      // Chercher un nombre entier
+      const intMatch = priceString.match(/(\d+)/);
+      if (intMatch) {
+        return parseInt(intMatch[1]);
+      }
+      
+      return 0;
+    };
+
     // Calculer le montant total à partir des items
-    const totalAmount = items.reduce((total: number, item: any) => total + (item.price || 0), 0);
+    const totalAmount = items.reduce((total: number, item: any) => {
+      const itemPrice = extractPrice(item.price);
+      console.log(`🔍 Debug - Prix extrait pour ${item.title}: "${item.price}" -> ${itemPrice}`);
+      return total + itemPrice;
+    }, 0);
     
     if (totalAmount <= 0) {
       console.error('❌ Erreur - Montant total invalide:', totalAmount);
@@ -84,17 +108,22 @@ export async function POST(request: NextRequest) {
     // Créer une session de paiement avec les métadonnées limitées
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: items.map((item: any) => ({
-        price_data: {
-          currency: 'eur',
-          product_data: {
-            name: item.title || 'Module IA',
-            description: item.description?.substring(0, 100) || 'Module d\'intelligence artificielle',
+      line_items: items.map((item: any) => {
+        const itemPrice = extractPrice(item.price);
+        console.log(`🔍 Debug - Prix pour Stripe ${item.title}: ${itemPrice}€ -> ${Math.round(itemPrice * 100)} centimes`);
+        
+        return {
+          price_data: {
+            currency: 'eur',
+            product_data: {
+              name: item.title || 'Module IA',
+              description: item.description?.substring(0, 100) || 'Module d\'intelligence artificielle',
+            },
+            unit_amount: Math.round(itemPrice * 100), // Convertir en centimes
           },
-          unit_amount: Math.round((item.price || 0) * 100), // Convertir en centimes
-        },
-        quantity: 1,
-      })),
+          quantity: 1,
+        };
+      }),
       mode: type === 'subscription' ? 'subscription' : 'payment',
       success_url: `${appUrl}/success?success=true`,
       cancel_url: `${appUrl}/cancel?canceled=true`,

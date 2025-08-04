@@ -307,7 +307,7 @@ export default function CardDetailPage() {
                 </div>
 
                 <div className="space-y-6">
-                  {/* Bouton d'accès gratuit ou sélection payante */}
+                  {/* Bouton d'abonnement ou d'accès gratuit */}
                   {card.price === 0 ? (
                     // Bouton d'accès gratuit pour les modules gratuits
                     <button 
@@ -377,123 +377,109 @@ export default function CardDetailPage() {
                       <span>{card.title === 'Metube' && session ? 'Accès gratuit' : 'Accéder gratuitement'}</span>
                     </button>
                   ) : (
-                    // Bouton de sélection pour les modules payants
-                    <div className="space-y-4">
-                      <button 
-                        className={`w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 ${
-                          isCardSelected(card.id)
-                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                            : card.price === 0
-                            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white'
-                            : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white cursor-not-allowed'
-                        }`}
-                        onClick={() => {
-                          if (card.price === 0) {
-                            handleSubscribe(card);
-                          } else {
-                            alert('Ce module nécessite un abonnement payant');
-                          }
-                        }}
-                      >
-                        <span className="text-xl">🔐</span>
-                        <span>{isCardSelected(card.id) ? 'Sélectionné' : 'Module Payant'}</span>
-                      </button>
-                      
-                      {/* Bouton "Activer la sélection" qui apparaît après avoir cliqué sur "Choisir" */}
-                      {isCardSelected(card.id) && (
+                    // Bouton d'abonnement pour les modules payants (sauf PSitransfer, Metube, PDF+)
+                    <div className="text-center py-6">
+                      {!['PSitransfer', 'Metube', 'PDF+'].includes(card.title) && (
                         <button 
-                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+                          className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white px-6 py-4 rounded-2xl shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl"
                           onClick={async () => {
-                            // Créer une session de paiement pour ce module spécifique
-                            try {
-                              const response = await fetch('/api/create-payment-intent', {
-                                method: 'POST',
-                                headers: {
-                                  'Content-Type': 'application/json',
-                                },
-                                body: JSON.stringify({
-                                  items: [card], // Seulement ce module
-                                  customerEmail: user?.email,
-                                  type: 'payment',
-                                }),
-                              });
+                            if (session) {
+                              // Mode connecté : rediriger directement vers Stripe
+                              try {
+                                const response = await fetch('/api/create-payment-intent', {
+                                  method: 'POST',
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                  },
+                                  body: JSON.stringify({
+                                    items: [card],
+                                    customerEmail: session.user.email,
+                                    type: 'payment',
+                                  }),
+                                });
 
-                              if (!response.ok) {
-                                throw new Error(`Erreur HTTP ${response.status}`);
+                                if (!response.ok) {
+                                  throw new Error(`Erreur HTTP ${response.status}`);
+                                }
+
+                                const { url, error } = await response.json();
+                                if (error) {
+                                  throw new Error(`Erreur API: ${error}`);
+                                }
+
+                                if (url) {
+                                  window.location.href = url;
+                                } else {
+                                  throw new Error('URL de session Stripe manquante.');
+                                }
+                              } catch (error) {
+                                console.error('Erreur lors du checkout:', error);
+                                alert(`Erreur lors du paiement: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
                               }
-
-                              const { url, error } = await response.json();
-
-                              if (error) {
-                                throw new Error(`Erreur API: ${error}`);
-                              }
-
-                              // Rediriger vers Stripe Checkout
-                              if (url) {
-                                window.location.href = url;
-                              } else {
-                                throw new Error('URL de session Stripe manquante.');
-                              }
-                            } catch (error) {
-                              console.error('Erreur lors de l\'activation:', error);
-                              alert(`Erreur lors de l'activation: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                            } else {
+                              // Mode non connecté : rediriger vers la création de compte
+                              router.push('/register');
                             }
                           }}
                         >
-                          <span className="text-xl">⚡</span>
-                          <span>Activer {card.title}</span>
+                          <div className="text-xl font-bold mb-2">
+                            {session ? '💰 S\'abonner' : '🔐 Créer un compte'}
+                          </div>
+                          <div className="text-sm opacity-90">
+                            {session ? 'Accéder à ce module payant' : 'Créer un compte pour vous abonner'}
+                          </div>
                         </button>
                       )}
-
-                                             {/* Bouton Test JWT - seulement pour les modules payants */}
-                       {session && card.price > 0 && (
-                         <button 
-                           className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1"
-                           onClick={async () => {
-                             try {
-                               console.log('🔍 Test JWT - Génération du token pour:', card.title);
-                               const response = await fetch('/api/generate-access-token', {
-                                 method: 'POST',
-                                 headers: {
-                                   'Content-Type': 'application/json',
-                                   'Authorization': `Bearer ${session?.access_token}`
-                                 },
-                                 body: JSON.stringify({
-                                   moduleId: card.id,
-                                   moduleName: card.title.toLowerCase().replace(/\s+/g, '')
-                                 }),
-                               });
-                               if (!response.ok) {
-                                 const errorData = await response.json();
-                                 throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
-                               }
-                               const { accessToken, moduleName } = await response.json();
-                               console.log('✅ Token JWT généré avec succès');
-                               console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
-                               const moduleUrls: { [key: string]: string } = {
-                                 'stablediffusion': 'http://localhost:7860',
-                                 'iaphoto': 'http://localhost:7861', 
-                                 'iametube': 'http://localhost:7862',
-                                 'chatgpt': 'http://localhost:7863',
-                                 'librespeed': 'https://librespeed.regispailler.fr',
-                                 'psitransfer': 'https://psitransfer.regispailler.fr',
-                                 'pdf+': 'https://pdfplus.regispailler.fr',
-                                 'aiassistant': 'http://localhost:7864'
-                               };
-                               const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
-                               const accessUrl = `${baseUrl}?token=${accessToken}`;
-                               console.log('🔗 URL d\'accès:', accessUrl);
-                               window.open(accessUrl, '_blank');
-                             } catch (error) {
-                               console.error('❌ Erreur lors de l\'accès:', error);
-                               alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
-                             }
-                           }}
-                         >
-                           <span className="text-xl">🔑</span>
-                           <span>Test JWT - Accéder à {card.title}</span>
-                         </button>
-                       )}
+                      
+                      {/* Bouton Test JWT - seulement pour Metube */}
+                      {session && card.title === 'Metube' && (
+                        <button 
+                          className="w-full font-semibold py-4 px-6 rounded-2xl transition-all duration-300 flex items-center justify-center space-x-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transform hover:-translate-y-1 mt-4"
+                          onClick={async () => {
+                            try {
+                              console.log('🔍 Test JWT - Génération du token pour:', card.title);
+                              const response = await fetch('/api/generate-access-token', {
+                                method: 'POST',
+                                headers: {
+                                  'Content-Type': 'application/json',
+                                  'Authorization': `Bearer ${session?.access_token}`
+                                },
+                                body: JSON.stringify({
+                                  moduleId: card.id,
+                                  moduleName: card.title.toLowerCase().replace(/\s+/g, '')
+                                }),
+                              });
+                              if (!response.ok) {
+                                const errorData = await response.json();
+                                throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+                              }
+                              const { accessToken, moduleName } = await response.json();
+                              console.log('✅ Token JWT généré avec succès');
+                              console.log('🔍 Token (premiers caractères):', accessToken.substring(0, 50) + '...');
+                              const moduleUrls: { [key: string]: string } = {
+                                'stablediffusion': 'http://localhost:7860',
+                                'iaphoto': 'http://localhost:7861', 
+                                'iametube': 'http://localhost:7862',
+                                'chatgpt': 'http://localhost:7863',
+                                'librespeed': 'https://librespeed.regispailler.fr',
+                                'psitransfer': 'https://psitransfer.regispailler.fr',
+                                'pdf+': 'https://pdfplus.regispailler.fr',
+                                'aiassistant': 'http://localhost:7864'
+                              };
+                              const baseUrl = moduleUrls[moduleName] || 'http://localhost:7862';
+                              const accessUrl = `${baseUrl}?token=${accessToken}`;
+                              console.log('🔗 URL d\'accès:', accessUrl);
+                              window.open(accessUrl, '_blank');
+                            } catch (error) {
+                              console.error('❌ Erreur lors de l\'accès:', error);
+                              alert(`Erreur lors de l'accès: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+                            }
+                          }}
+                        >
+                          <span className="text-xl">🔑</span>
+                          <span>Test JWT - Accéder à {card.title}</span>
+                        </button>
+                      )}
                     </div>
                   )}
 

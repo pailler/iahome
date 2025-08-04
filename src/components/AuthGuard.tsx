@@ -137,10 +137,10 @@ export default function AuthGuard({ children, moduleName, requireSubscription = 
         
         <div className="space-y-4">
           <button
-            onClick={() => router.push(`/selections?module=${moduleName}`)}
+            onClick={() => router.push(`/card/${moduleName}`)}
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
           >
-            Voir les abonnements
+            Voir le module
           </button>
           
           <button
